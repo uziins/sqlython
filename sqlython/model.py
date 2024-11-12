@@ -419,9 +419,14 @@ class Model:
     def with_relation(self, *relations):
         """
         Add with clause to query. This will add relationship data to result.
-        :param relations: single string of relation or array of relations
+        :param relations: single string, list or tuple of relations
         """
         self._query['with'] = self._query.get('with', [])
+        if len(relations) == 1:
+            if isinstance(relations[0], str):
+                relations = [relation.strip() for relation in relations[0].split(',')]
+            elif isinstance(relations[0], list):
+                relations = relations[0]
         for relation in relations:
             if not hasattr(self, relation):
                 raise Exception(f'Relation `{relation}` doesn\'t exist!')
