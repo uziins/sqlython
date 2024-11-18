@@ -1,80 +1,62 @@
+import copy
 import datetime
-import os
-import mysql.connector
-from dotenv import load_dotenv
 
 from sqlython.builder import query_builder
+from sqlython.connection import DatabaseConnection
 from sqlython.filter import casts, columns
 
-load_dotenv()
-
-
 class Model:
-    def __init__(self):
-        """
-        Constructor for Model class
+    """
+    This class is a base class for all models. It contains basic methods for CRUD operations.
 
-        This class is a base class for all models. It contains basic methods for CRUD operations.
+    Attributes:
+    - table: table name
+    - primary_key: primary key field name
+    - fillable: fillable fields
+    - guarded: guarded fields
+    - hidden: hidden fields
+    - timestamp: whether to use timestamp
+    - soft_delete: whether to use soft delete
+    - per_page: number of data per page
+    - casts: data type casting
+    """
 
-        Attributes:
-        - table: table name
-        - primary_key: primary key field name
-        - fillable: fillable fields
-        - guarded: guarded fields
-        - hidden: hidden fields
-        - timestamp: whether to use timestamp
-        - soft_delete: whether to use soft delete
-        - per_page: number of data per page
-        - casts: data type casting
-        """
+    table = ''
+    primary_key = 'id'
+    fillable = []
+    guarded = []
+    hidden = []
+    timestamp = True
+    soft_delete = False
+    per_page = 10
+    casts = {}
+    _query = {}
 
-        self.table = ''
-        self.primary_key = 'id'
-        self.fillable = []
-        self.guarded = []
-        self.hidden = []
-        self.timestamp = True
-        self.soft_delete = False
-        self.per_page = 10
-        self.casts = {}
-        self._query = {}
-        self._connection = self._get_connection()
-
-    @staticmethod
-    def _get_connection():
-        # Get database configuration from environment variables
-        host = os.getenv("DB_HOST")
-        user = os.getenv("DB_USER")
-        password = os.getenv("DB_PASSWORD")
-        database = os.getenv("DB_NAME")
-
-        return mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database
-        )
-
-    def _execute(self, action, query, bindings=None):
+    @classmethod
+    def _execute(cls, action, query, bindings=None):
         """
         Execute query
         :param query: query string
         :param bindings: query bindings
         """
-        cursor = self._connection.cursor(dictionary=True)
-        if action == 'insert':
-            cursor.execute(query, bindings)
-            self._connection.commit()
-            result = {'insert_id': cursor.lastrowid}
-        elif action == 'update' or action == 'delete':
-            cursor.execute(query, bindings)
-            self._connection.commit()
-            result = {'affected_rows': cursor.rowcount}
-        else:
-            cursor.execute(query, bindings)
-            result = cursor.fetchall()
-        cursor.close()
-        return result
+        connection = DatabaseConnection.get_connection()
+        cursor = connection.cursor(dictionary=True)
+        try:
+            if action == 'insert':
+                cursor.execute(query, bindings)
+                connection.commit()
+                result = {'insert_id': cursor.lastrowid}
+            elif action == 'update' or action == 'delete':
+                cursor.execute(query, bindings)
+                connection.commit()
+                result = {'affected_rows': cursor.rowcount}
+            else:
+                cursor.execute(query, bindings)
+                result = cursor.fetchall()
+            return result
+        finally:
+            cursor.close()
+            connection.close()
 
     def _process(self, reset=True):
         """
@@ -82,7 +64,7 @@ class Model:
         """
         if not self.table:
             raise Exception('Table name is not defined')
-        _q = self._query
+        _q = copy.copy(self._query)
         if reset:
             self._query = {}
         query = query_builder(self.table, _q)
@@ -93,7 +75,7 @@ class Model:
             return None
 
         do_cast = _q['action'] == 'select' and len(self.casts) > 0
-        do_relation = _q['action'] == 'select' and _q.get('relations')
+        do_relation = _q['action'] == 'select' and len(_q.get('relations', [])) > 0
         do_hide_field = _q['action'] == 'select' and len(self.hidden) > 0
 
         # relation
@@ -110,6 +92,7 @@ class Model:
                     continue
 
                 model = relation['model']
+                model._query = {}
                 callback = relation['callback']
                 if callback and callable(callback):
                     callback(model)
@@ -346,7 +329,7 @@ class Model:
 
     def has_many(self, model, foreign_key, local_key, name='', callback=None):
         """
-        Add hasMany relationship to result. Get all record that holds the current model primary key.
+        Add has_many relationship to result. Get all record that holds the current model primary key.
         :param model: model class
         :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
         :param local_key: local key. It's the field that the related-model will refer to
@@ -370,7 +353,7 @@ class Model:
 
     def has_one(self, model, foreign_key, local_key, name='', callback=None):
         """
-        Add hasOne relationship to result. Get first record that holds the current model primary key.
+        Add has_one relationship to result. Get first record that holds the current model primary key.
         :param model: model class
         :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
         :param local_key: local key. It's the field that the related-model will refer to
@@ -394,7 +377,7 @@ class Model:
 
     def belongs_to(self, model, foreign_key, local_key, name='', callback=None):
         """
-        Add belongsTo relationship to result. Get first record that holds the related model primary key.
+        Add belongs_to relationship to result. Get first record that holds the related model primary key.
         :param model: model class
         :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
         :param local_key: local key. It's the field that the related-model will refer to
@@ -431,6 +414,7 @@ class Model:
             if not hasattr(self, relation):
                 raise Exception(f'Relation `{relation}` doesn\'t exist!')
             getattr(self, relation)()
+            # self._query['with'].append(relation)
         return self
 
     def raw_query(self, query):
@@ -514,6 +498,7 @@ class Model:
         self._query['action'] = 'update'
         return self._process()
 
+    @classmethod
     def delete(self):
         """
         Delete data. If soft delete is enabled, it will set `deleted_at` column to current datetime.

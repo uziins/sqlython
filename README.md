@@ -23,6 +23,21 @@ DB_PASSWORD=
 DB_DATABASE=database
 ```
 
+It will automatically create a connection to the database using the environment variables.
+Alternatively, you can manually create a connection:
+
+```python
+from sqlython.connection import DatabaseConnection
+
+DatabaseConnection.initialize(
+    host='localhost',
+    port=3306,
+    user='root',
+    password='',
+    database='database'
+)
+```
+
 ## Usage
 
 ### Extending the Model
@@ -570,14 +585,14 @@ Define a "has one" relationship between two tables.
 from profiles import Profile
 from sqlython.model import Model
 
+
 class User(Model):
-    def __init__(self):
-        super().__init__()
-        self.table = 'users'
-        ...
-    
-    def profile(self):
-        return self.has_one(Profile, 'user_id', 'id', 'profile', lambda q: q.select('bio','user_id'))
+    table = 'users'
+    ...
+
+    @classmethod
+    def profile(cls):
+        return cls.has_one(Profile, 'user_id', 'id', 'profile', lambda q: q.select('bio', 'user_id'))
 
 ```
 
@@ -597,14 +612,15 @@ Define a "has many" relationship between two tables.
 from posts import Post
 from sqlython.model import Model
 
+
 class User(Model):
     def __init__(self):
         super().__init__()
         self.table = 'users'
         ...
-    
+
     def posts(self):
-        return self.has_many(Post, 'user_id', 'id', 'posts', lambda q: q.select('title','user_id'))
+        return self.has_many(Post, 'user_id', 'id', 'posts', lambda q: q.select('title', 'user_id'))
 
 ```
 
@@ -624,14 +640,15 @@ Define a "belongs to" relationship between two tables.
 from users import User
 from sqlython.model import Model
 
+
 class Profile(Model):
     def __init__(self):
         super().__init__()
         self.table = 'profiles'
         ...
-    
+
     def user(self):
-        return self.belongs_to(User, 'user_id', 'id', 'user', lambda q: q.select('id','name','username'))
+        return self.belongs_to(User, 'user_id', 'id', 'user', lambda q: q.select('id', 'name', 'username'))
 
 ```
 
