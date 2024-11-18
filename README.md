@@ -48,7 +48,6 @@ i.e. users.py
 ```python
 from sqlython.model import Model
 
-
 class User(Model):
     table = 'users'
     fillable = ['name', 'username', 'email', 'password']
