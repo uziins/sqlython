@@ -28,7 +28,7 @@ def query_builder(table, query):
             raise Exception('Delete query must have where clause!')
         sql_query = f'DELETE FROM {table}'
     else:
-        raise Exception('Invalid _query.action')
+        raise Exception('Invalid __query.action')
 
     if action == 'update' or action == 'insert':
         sql_query += ' SET '

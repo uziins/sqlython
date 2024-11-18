@@ -49,30 +49,21 @@ from sqlython.model import Model
 
 
 class User(Model):
-    def __init__(self):
-        super().__init__()
-        self.table = 'users'
-        self.fillable = ['name', 'username', 'email', 'password']
-        self.hidden = ['password']
-        self.timestamps = True
-        self.soft_delete = True
-        self.casts = {
+    table = 'users'
+    fillable = ['name', 'username', 'email', 'password']
+    hidden = ['password']
+    timestamps = True
+    soft_delete = True
+    casts = {
             'is_active': 'boolean'
         }
 ```
 
-### Defining a Model
+### Usage
 
 ```python
 from users import User
-
-User = User()
-
-# or
-
-import users
-
-User = users.User()
+user = User.find(1)
 ```
 
 ### Retrieving Records
@@ -84,7 +75,7 @@ print(users)
 
 ## Model
 
-### Properties
+### Class Attributes
 
 #### table (str|required)
 
@@ -614,13 +605,12 @@ from sqlython.model import Model
 
 
 class User(Model):
-    def __init__(self):
-        super().__init__()
-        self.table = 'users'
-        ...
+    table = 'users'
+    ...
 
-    def posts(self):
-        return self.has_many(Post, 'user_id', 'id', 'posts', lambda q: q.select('title', 'user_id'))
+    @classmethod
+    def posts(cls):
+        return cls.has_many(Post, 'user_id', 'id', 'posts', lambda q: q.select('title', 'user_id'))
 
 ```
 
@@ -642,13 +632,12 @@ from sqlython.model import Model
 
 
 class Profile(Model):
-    def __init__(self):
-        super().__init__()
-        self.table = 'profiles'
-        ...
+    table = 'profiles'
+    ...
 
-    def user(self):
-        return self.belongs_to(User, 'user_id', 'id', 'user', lambda q: q.select('id', 'name', 'username'))
+    @classmethod
+    def user(cls):
+        return cls.belongs_to(User, 'user_id', 'id', 'user', lambda q: q.select('id', 'name', 'username'))
 
 ```
 
