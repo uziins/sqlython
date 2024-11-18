@@ -24,7 +24,8 @@ DB_DATABASE=database
 ```
 
 It will automatically create a connection to the database using the environment variables.
-Alternatively, you can manually create a connection:
+Alternatively, you can manually create a connection using the `DatabaseConnection` class. 
+Just call the `initialize()` in the main file of your project.
 
 ```python
 from sqlython.connection import DatabaseConnection
