@@ -9,7 +9,7 @@ def columns(obj, fillable=None, guarded=None):
 
     data = {}
     for key in obj:
-        if (len(fillable) > 0 and key in fillable) or (len(guarded) > 0 and key not in guarded):
+        if (not fillable or key in fillable) and (not guarded or key not in guarded):
             data[key] = obj[key]
     return data
 
