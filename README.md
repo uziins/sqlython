@@ -199,7 +199,7 @@ users = User.paginate(page=1, per_page=10)
 
 #### Parameters
 
-- data (dict|required) - A dictionary of key-value pairs to insert into the database.
+- data (dict|kwargs|required) - A dictionary of key-value pairs or keyword arguments to insert into the database.
 
 Insert a new record into the database.
 
@@ -218,7 +218,7 @@ user = User.insert({
 
 #### Parameters
 
-- data (dict|required) - A dictionary of key-value pairs to update in the database.
+- data (dict|kwargs|required) - A dictionary of key-value pairs or keyword arguments to update in the database.
 
 Update records in the database. Must be called after a `where()` method.
 

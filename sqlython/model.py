@@ -35,9 +35,20 @@ class Model:
     @classmethod
     def _execute(cls, action, query, bindings=None):
         """
-        Execute query
-        :param query: query string
-        :param bindings: query bindings
+        Execute a database query.
+
+        This method executes a database query based on the specified action. It handles different types of queries
+        such as insert, update, delete, and select. The method also manages the database connection and cursor.
+
+        Args:
+            action (str): The type of query to execute ('insert', 'update', 'delete', or other for select).
+            query (str): The SQL query string to execute.
+            bindings (list, optional): The query bindings to use. Defaults to None.
+
+        Returns:
+            dict or list: The result of the query execution. For 'insert', it returns a dictionary with the insert ID.
+                          For 'update' and 'delete', it returns a dictionary with the number of affected rows.
+                          For other actions, it returns a list of fetched records.
         """
         connection = DatabaseConnection.get_connection()
         cursor = connection.cursor(dictionary=True)
@@ -61,7 +72,16 @@ class Model:
     @classmethod
     def _process(cls, reset=True):
         """
-        Process the query
+        Process the query.
+
+        This method processes the query by executing it and handling the results. It supports casting data types,
+        handling relationships, and hiding fields.
+
+        Args:
+            reset (bool, optional): Whether to reset the query after processing. Defaults to True.
+
+        Returns:
+            list or None: The processed query results, or None if an error occurs.
         """
         if not cls.table:
             raise Exception('Table name is not defined')
@@ -150,8 +170,16 @@ class Model:
     @classmethod
     def select(cls, *fields):
         """
-        If select is empty, it will select all fields
-        :param fields: single string (comma separated), tuple, or list of fields
+        Add SELECT clause to the query.
+
+        This method adds the specified fields to the SELECT clause of the query. If no fields are provided,
+        it will select all fields.
+
+        Args:
+            fields: A single string (comma separated), tuple, or list of fields to select.
+
+        Returns:
+            Model: The current model instance with the SELECT clause applied.
         """
         cls.__query['select'] = cls.__query.get('select', [])
         len_fields = len(fields)
@@ -167,12 +195,20 @@ class Model:
     @classmethod
     def join(cls, table, first, operator, second, join_type='INNER'):
         """
-        JOIN table ON first operator second
-        :param table: table name
-        :param first: first field
-        :param operator: operator
-        :param second: second field
-        :param join_type: join type (INNER, LEFT, RIGHT, FULL)
+        Add a JOIN clause to the query.
+
+        This method adds a JOIN clause to the query, specifying the table to join, the fields to join on,
+        the operator to use, and the type of join.
+
+        Args:
+            table (str): The name of the table to join.
+            first (str): The first field in the join condition.
+            operator (str): The operator to use in the join condition (e.g., '=', '<>', etc.).
+            second (str): The second field in the join condition.
+            join_type (str, optional): The type of join to perform (e.g., 'INNER', 'LEFT', 'RIGHT', 'FULL'). Defaults to 'INNER'.
+
+        Returns:
+            Model: The current model instance with the JOIN clause applied.
         """
         cls.__query['joins'] = cls.__query.get('joins', [])
         cls.__query['joins'].append(
@@ -182,11 +218,19 @@ class Model:
     @classmethod
     def left_join(cls, table, first, operator, second):
         """
-        LEFT JOIN table ON first operator second
-        :param table: table name
-        :param first: first field
-        :param operator: operator
-        :param second: second field
+        Add a LEFT JOIN clause to the query.
+
+        This method adds a LEFT JOIN clause to the query, specifying the table to join, the fields to join on,
+        and the operator to use.
+
+        Args:
+            table (str): The name of the table to join.
+            first (str): The first field in the join condition.
+            operator (str): The operator to use in the join condition (e.g., '=', '<>', etc.).
+            second (str): The second field in the join condition.
+
+        Returns:
+            Model: The current model instance with the LEFT JOIN clause applied.
         """
         return cls.join(table, first, operator, second, 'LEFT')
 
@@ -194,12 +238,17 @@ class Model:
     def where(cls, field, operator=None, value=None):
         """
         Add WHERE clause to query.
-        If field is a dict, then treat it as equal operator with field as key and value as value.
-        If field is a string, then treat it as equal operator with field as key and operator as value.
-        If all arguments are present, then treat as it is.
-        :param field: field name or dict
-        :param operator: operator or value
-        :param value: field value (if field and operator are present)
+        If field is a dict, it will treat each key-value pair as a condition with the '=' operator.
+        If field is a string, it will treat it as a condition with the specified operator and value.
+        If only field and operator are provided, it will treat the operator as the value and use '=' as the operator.
+
+        Args:
+            field (str or dict): The field name or a dictionary of field-value pairs.
+            operator (str, optional): The operator to use in the condition (e.g., '=', '<>', etc.). Defaults to None.
+            value (any, optional): The value to compare the field against. Defaults to None.
+
+        Returns:
+            Model: The current model instance with the WHERE clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         if isinstance(field, dict):
@@ -217,13 +266,20 @@ class Model:
     @classmethod
     def or_where(cls, field, operator=None, value=None):
         """
-        Add OR WHERE clause to query.
-        If field is a dict, then treat it as equal operator with field as key and value as value.
-        If field is a string, then treat it as equal operator with field as key and operator as value.
-        If all arguments are present, then treat as it is.
-        :param field: field name or dict
-        :param operator: operator or value
-        :param value: field value (if field and operator are present)
+        Add an OR WHERE clause to the query.
+
+        This method adds an OR WHERE clause to the query, specifying the field, operator, and value for the condition.
+        If the field is a dictionary, it treats each key-value pair as a condition with the '=' operator.
+        If the field is a string, it treats it as a condition with the specified operator and value.
+        If only the field and operator are provided, it treats the operator as the value and uses '=' as the operator.
+
+        Args:
+            field (str or dict): The field name or a dictionary of field-value pairs.
+            operator (str, optional): The operator to use in the condition (e.g., '=', '<>', etc.). Defaults to None.
+            value (any, optional): The value to compare the field against. Defaults to None.
+
+        Returns:
+            Model: The current model instance with the OR WHERE clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         if isinstance(field, dict):
@@ -246,8 +302,15 @@ class Model:
     @classmethod
     def where_raw(cls, raw):
         """
-        Add raw WHERE clause to query.
-        :param raw: raw query string
+        Add a raw WHERE clause to the query.
+
+        This method adds a raw WHERE clause to the query, allowing for custom SQL conditions.
+
+        Args:
+            raw (str): The raw SQL condition to add to the WHERE clause.
+
+        Returns:
+            Model: The current model instance with the raw WHERE clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'raw': raw, 'chain': 'AND'})
@@ -256,8 +319,15 @@ class Model:
     @classmethod
     def or_where_raw(cls, raw):
         """
-        Add raw OR WHERE clause to query.
-        :param raw: raw query string
+        Add a raw OR WHERE clause to the query.
+
+        This method adds a raw OR WHERE clause to the query, allowing for custom SQL conditions.
+
+        Args:
+            raw (str): The raw SQL condition to add to the OR WHERE clause.
+
+        Returns:
+            Model: The current model instance with the raw OR WHERE clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'raw': raw, 'chain': 'OR'})
@@ -266,9 +336,16 @@ class Model:
     @classmethod
     def where_in(cls, field, values):
         """
-        WHERE field IN (values)
-        :param field: field name
-        :param values: list of values
+        Add a WHERE IN clause to the query.
+
+        This method adds a WHERE IN clause to the query, specifying the field and a list of values for the condition.
+
+        Args:
+            field (str): The field name to compare.
+            values (list): A list of values to compare the field against.
+
+        Returns:
+            Model: The current model instance with the WHERE IN clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'field': field, 'operator': 'IN', 'value': values, 'chain': 'AND'})
@@ -277,9 +354,16 @@ class Model:
     @classmethod
     def where_not_in(cls, field, values):
         """
-        WHERE field NOT IN (values)
-        :param field: field name
-        :param values: list of values
+        Add a WHERE NOT IN clause to the query.
+
+        This method adds a WHERE NOT IN clause to the query, specifying the field and a list of values for the condition.
+
+        Args:
+            field (str): The field name to compare.
+            values (list): A list of values to compare the field against.
+
+        Returns:
+            Model: The current model instance with the WHERE NOT IN clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'field': field, 'operator': 'NOT IN', 'value': values, 'chain': 'AND'})
@@ -288,8 +372,15 @@ class Model:
     @classmethod
     def where_null(cls, field):
         """
-        Add WHERE field IS NULL clause to query.
-        :param field: field name
+        Add a WHERE IS NULL clause to the query.
+
+        This method adds a WHERE IS NULL clause to the query, specifying the field to check for NULL values.
+
+        Args:
+            field (str): The field name to check for NULL values.
+
+        Returns:
+            Model: The current model instance with the WHERE IS NULL clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'field': field, 'operator': 'IS', 'value': 'NULL', 'chain': 'AND'})
@@ -298,8 +389,15 @@ class Model:
     @classmethod
     def where_not_null(cls, field):
         """
-        Add WHERE field IS NOT NULL clause to query.
-        :param field: field name
+        Add a WHERE IS NOT NULL clause to the query.
+
+        This method adds a WHERE IS NOT NULL clause to the query, specifying the field to check for non-NULL values.
+
+        Args:
+            field (str): The field name to check for non-NULL values.
+
+        Returns:
+            Model: The current model instance with the WHERE IS NOT NULL clause applied.
         """
         cls.__query['where'] = cls.__query.get('where', [])
         cls.__query['where'].append({'field': field, 'operator': 'IS NOT', 'value': 'NULL', 'chain': 'AND'})
@@ -308,7 +406,12 @@ class Model:
     @classmethod
     def with_trashed(cls):
         """
-        Include soft deleted data
+        Include soft deleted data in the query results.
+
+        This method modifies the query to include records that have been soft deleted.
+
+        Returns:
+            Model: The current model instance with the soft deleted data included.
         """
         cls.__query['with_trashed'] = True
         return cls
@@ -316,9 +419,16 @@ class Model:
     @classmethod
     def order_by(cls, field, direction='ASC'):
         """
-        ORDER BY field direction
-        :param field: field name
-        :param direction: direction (ASC or DESC)
+        Add an ORDER BY clause to the query.
+
+        This method adds an ORDER BY clause to the query, specifying the field to order by and the direction of the order.
+
+        Args:
+            field (str): The field name to order by.
+            direction (str, optional): The direction of the order (either 'ASC' for ascending or 'DESC' for descending). Defaults to 'ASC'.
+
+        Returns:
+            Model: The current model instance with the ORDER BY clause applied.
         """
         cls.__query['order_by'] = {'field': field, 'direction': direction}
         return cls
@@ -326,8 +436,15 @@ class Model:
     @classmethod
     def group_by(cls, *fields):
         """
-        GROUP BY fields
-        :param fields: single string (with comma separated), tuple, or list of fields
+        Add a GROUP BY clause to the query.
+
+        This method adds a GROUP BY clause to the query, specifying the fields to group by.
+
+        Args:
+            fields: A single string (comma separated), tuple, or list of fields to group by.
+
+        Returns:
+            Model: The current model instance with the GROUP BY clause applied.
         """
         len_fields = len(fields)
         if len_fields == 1:
@@ -341,9 +458,16 @@ class Model:
     @classmethod
     def limit(cls, limit, offset=0):
         """
-        LIMIT limit OFFSET offset
-        :param limit: number of data
-        :param offset: offset
+        Set the LIMIT and OFFSET for the query.
+
+        This method sets the limit and offset for the number of records to retrieve from the database.
+
+        Args:
+            limit (int): The number of records to retrieve.
+            offset (int, optional): The number of records to skip before starting to retrieve records. Defaults to 0.
+
+        Returns:
+            Model: The current model instance with the limit and offset applied.
         """
         cls.__query['limit'] = limit
         cls.__query['offset'] = offset
@@ -352,12 +476,19 @@ class Model:
     @classmethod
     def has_many(cls, model, foreign_key, local_key, name='', callback=None):
         """
-        Add hasMany relationship to result. Get all record that holds the current model primary key.
-        :param model: model class
-        :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
-        :param local_key: local key. It's the field that the related-model will refer to
-        :param name: identifier name. If not set, we use table name
-        :param callback: callback function to modify query
+        Add a hasMany relationship to the result.
+
+        This method adds a hasMany relationship to the result, retrieving all records that hold the current model's primary key.
+
+        Args:
+            model (Model): The related model class.
+            foreign_key (str): The foreign key field in the related model.
+            local_key (str): The local key field in the current model.
+            name (str, optional): The identifier name for the relationship. Defaults to the table name of the related model.
+            callback (function, optional): A callback function to modify the query.
+
+        Returns:
+            Model: The current model instance with the hasMany relationship applied.
         """
         if isinstance(model, type):
             model = model()
@@ -377,12 +508,19 @@ class Model:
     @classmethod
     def has_one(cls, model, foreign_key, local_key, name='', callback=None):
         """
-        Add hasOne relationship to result. Get first record that holds the current model primary key.
-        :param model: model class
-        :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
-        :param local_key: local key. It's the field that the related-model will refer to
-        :param name: identifier name. If not set, we use table name
-        :param callback: callback function to modify query
+        Add a hasOne relationship to the result.
+
+        This method adds a hasOne relationship to the result, retrieving the first record that holds the current model's primary key.
+
+        Args:
+            model (Model): The related model class.
+            foreign_key (str): The foreign key field in the related model.
+            local_key (str): The local key field in the current model.
+            name (str, optional): The identifier name for the relationship. Defaults to the table name of the related model.
+            callback (function, optional): A callback function to modify the query.
+
+        Returns:
+            Model: The current model instance with the hasOne relationship applied.
         """
         if isinstance(model, type):
             model = model()
@@ -402,12 +540,19 @@ class Model:
     @classmethod
     def belongs_to(cls, model, foreign_key, local_key, name='', callback=None):
         """
-        Add belongsTo relationship to result. Get first record that holds the related model primary key.
-        :param model: model class
-        :param foreign_key: foreign key. It's the related-model field that will be used to get the parent model
-        :param local_key: local key. It's the field that the related-model will refer to
-        :param name: identifier name. If not set, we use table name
-        :param callback: callback function to modify query
+        Add a belongsTo relationship to the result.
+
+        This method adds a belongsTo relationship to the result, retrieving the first record that holds the related model's primary key.
+
+        Args:
+            model (Model): The related model class.
+            foreign_key (str): The foreign key field in the related model.
+            local_key (str): The local key field in the current model.
+            name (str, optional): The identifier name for the relationship. Defaults to the table name of the related model.
+            callback (function, optional): A callback function to modify the query.
+
+        Returns:
+            Model: The current model instance with the belongsTo relationship applied.
         """
         if isinstance(model, type):
             model = model()
@@ -427,8 +572,15 @@ class Model:
     @classmethod
     def with_relation(cls, *relations):
         """
-        Add with clause to query. This will add relationship data to result.
-        :param relations: single string, list or tuple of relations
+        Add a with clause to the query.
+
+        This method adds relationship data to the result by including the specified relations.
+
+        Args:
+            relations: A single string, list, or tuple of relations to include.
+
+        Returns:
+            Model: The current model instance with the specified relations included.
         """
         if len(relations) == 1:
             if isinstance(relations[0], str):
@@ -444,8 +596,15 @@ class Model:
     @classmethod
     def raw_query(cls, query):
         """
-        Execute raw query
-        :param query: query string
+        Execute a raw query.
+
+        This method executes a raw SQL query.
+
+        Args:
+            query (str): The raw SQL query string to execute.
+
+        Returns:
+            Any: The result of the raw query execution.
         """
         cls.__query['action'] = 'raw'
         return cls._execute('raw', query)
@@ -453,7 +612,12 @@ class Model:
     @classmethod
     def get(cls):
         """
-        Get all data from the table
+        Retrieve all data from the table.
+
+        This method retrieves all data from the table, applying any query conditions that have been set.
+
+        Returns:
+            list: A list of records from the table.
         """
         if cls.soft_delete and not cls.__query.get('with_trashed'):
             cls.where_null('deleted_at')
@@ -463,7 +627,12 @@ class Model:
     @classmethod
     def first(cls):
         """
-        Get first data from the table
+        Retrieve the first record from the table.
+
+        This method retrieves the first record from the table, applying any query conditions that have been set.
+
+        Returns:
+            dict: The first record from the table, or None if no record is found.
         """
         cls.__query['limit'] = 1
         result = cls.get()
@@ -472,8 +641,15 @@ class Model:
     @classmethod
     def find(cls, primary_key):
         """
-        Find data by primary key
-        :param primary_key: primary key value
+        Find data by primary key.
+
+        This method retrieves a single record from the database table based on the primary key value provided.
+
+        Args:
+            primary_key: The value of the primary key to search for.
+
+        Returns:
+            The first record that matches the primary key, or None if no record is found.
         """
         cls.__query['where'] = []
         return cls.where(cls.primary_key, primary_key).first()
@@ -481,18 +657,34 @@ class Model:
     @classmethod
     def count(cls):
         """
-        Get total data
+        Get the total number of records in the table.
+
+        This method retrieves the total number of records in the table by executing a COUNT query.
+
+        Returns:
+            int: The total number of records in the table.
         """
         cls.__query['select'] = ['COUNT(*) AS total']
         result = cls.get()
         return result[0].get('total', 0) if result else 0
 
     @classmethod
-    def insert(cls, data):
+    def insert(cls, *args, **kwargs):
         """
-        Insert data
-        :param data: data to be inserted
+        Insert data into the database.
+
+        This method inserts the data into the database for the model. It accepts data as either a dictionary
+        or keyword arguments. The data is filtered based on the fillable and guarded fields, and the data types
+        are cast if necessary. The method also handles timestamp fields if enabled.
+
+        Args:
+            *args: Variable length argument list. The first argument can be a dictionary containing the data to insert.
+            **kwargs: Arbitrary keyword arguments containing the data to insert.
+
+        Returns:
+            The result of the insert operation, or None if no data is provided.
         """
+        data = args[0] if args and isinstance(args[0], dict) else kwargs
         cls.__query['data'] = columns(data, cls.fillable, cls.guarded)
         if not cls.__query['data']:
             return None
@@ -507,7 +699,23 @@ class Model:
         return cls._process()
 
     @classmethod
-    def update(cls, data):
+    def update(cls, *args, **kwargs):
+        """
+        Update data in the database.
+
+        This method updates the data in the database for the model. It accepts data as either a dictionary
+        or keyword arguments. The data is filtered based on the fillable and guarded fields, and the data types
+        are cast if necessary. The method ensures that an update query has a WHERE clause for safety and handles
+        soft delete and timestamp fields if enabled.
+
+        Args:
+            *args: Variable length argument list. The first argument can be a dictionary containing the data to update.
+            **kwargs: Arbitrary keyword arguments containing the data to update.
+
+        Returns:
+            The result of the update operation, or None if no data is provided.
+        """
+        data = args[0] if args and isinstance(args[0], dict) else kwargs
         cls.__query['data'] = columns(data, cls.fillable, cls.guarded)
         if not cls.__query['data']:
             return None
@@ -533,6 +741,12 @@ class Model:
     def delete(cls):
         """
         Delete data. If soft delete is enabled, it will set `deleted_at` column to current datetime.
+
+        This method deletes data from the database. If soft delete is enabled, it sets the `deleted_at` column
+        to the current datetime instead of permanently deleting the record.
+
+        Returns:
+            Model: The current model instance with the delete operation applied.
         """
         if cls.soft_delete:
             cls.where_null('deleted_at')
@@ -545,7 +759,12 @@ class Model:
     @classmethod
     def restore(cls):
         """
-        Restore soft deleted data
+        Restore soft deleted data.
+
+        This method restores data that has been soft deleted by setting the `deleted_at` column to None.
+
+        Returns:
+            The result of the update operation if soft delete is enabled, otherwise None.
         """
         if cls.soft_delete:
             cls.__query['data'] = {'deleted_at': None}
@@ -556,7 +775,12 @@ class Model:
     @classmethod
     def force_delete(cls):
         """
-        Force delete data. Delete data permanently even if soft delete is enabled.
+        Force delete data.
+
+        This method deletes data permanently from the database, even if soft delete is enabled.
+
+        Returns:
+            The result of the delete operation.
         """
         cls.__query['action'] = 'delete'
         return cls._process()
@@ -564,9 +788,19 @@ class Model:
     @classmethod
     def paginate(cls, page=0, per_page=0):
         """
-        Get data with pagination
-        :param page: page number
-        :param per_page: number of rows per page
+        Get data with pagination.
+
+        This method retrieves data from the database table with pagination. It calculates the offset and limit
+        based on the provided page number and number of rows per page. It also handles soft delete filtering
+        if enabled.
+
+        Args:
+            page (int): Page number. Defaults to 0.
+            per_page (int): Number of rows per page. Defaults to 0.
+
+        Returns:
+            dict: A dictionary containing the paginated data, total number of records, total pages, current page,
+                  number of rows per page, next page number, and previous page number.
         """
         if not isinstance(page, int):
             page = int(page)
