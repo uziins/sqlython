@@ -30,10 +30,12 @@ class Model:
     soft_delete = False
     per_page = 10
     casts = {}
-    __query = {}
 
-    @classmethod
-    def _execute(cls, action, query, bindings=None):
+    def __init__(self):
+        self.__query = {}
+
+    @staticmethod
+    def _execute(action, query, bindings=None):
         """
         Execute a database query.
 
@@ -69,8 +71,7 @@ class Model:
             cursor.close()
             connection.close()
 
-    @classmethod
-    def _process(cls, reset=True):
+    def _process(self, reset=True):
         """
         Process the query.
 
@@ -83,21 +84,21 @@ class Model:
         Returns:
             list or None: The processed query results, or None if an error occurs.
         """
-        if not cls.table:
+        if not self.table:
             raise Exception('Table name is not defined')
-        _q = copy.copy(cls.__query)
+        _q = copy.copy(self.__query)
         if reset:
-            cls.__query = {}
-        query = query_builder(cls.table, _q)
+            self.__query = {}
+        query = query_builder(self.table, _q)
         try:
-            data = cls._execute(_q['action'], query['sql'], query['bindings'])
+            data = self._execute(_q['action'], query['sql'], query['bindings'])
         except Exception as e:
             print(e)
             return None
 
-        do_cast = _q['action'] == 'select' and len(cls.casts) > 0
+        do_cast = _q['action'] == 'select' and len(self.casts) > 0
         do_relation = _q['action'] == 'select' and len(_q.get('relations', [])) > 0
-        do_hide_field = _q['action'] == 'select' and len(cls.hidden) > 0
+        do_hide_field = _q['action'] == 'select' and len(self.hidden) > 0
 
         # relation
         data_relation = {}
@@ -110,7 +111,7 @@ class Model:
                 ids = []
                 for row in data:
                     if main_field not in row:
-                        raise Exception(f'Field `{main_field}` does not exist in model `{cls.table}` result!')
+                        raise Exception(f'Field `{main_field}` does not exist in model `{self.table}` result!')
                     if row[main_field] is not None and row[main_field] not in ids:
                         ids.append(row[main_field])
                 if not ids:
@@ -151,7 +152,7 @@ class Model:
             result_data = []
             for row in data:
                 if do_cast:
-                    row = casts(row, cls.casts)
+                    row = casts(row, self.casts)
                 if do_relation:
                     # iterate through relations and set data value
                     for identifier, relation in data_relation.items():
@@ -159,7 +160,7 @@ class Model:
                         if identifier in data_relation:
                             row[identifier] = relation['data'].get(key, relation['empty'])
                 if do_hide_field:
-                    for field in cls.hidden:
+                    for field in self.hidden:
                         row.pop(field, None)
                 result_data.append(row)
         else:
@@ -167,8 +168,7 @@ class Model:
 
         return result_data
 
-    @classmethod
-    def select(cls, *fields):
+    def select(self, *fields):
         """
         Add SELECT clause to the query.
 
@@ -181,7 +181,7 @@ class Model:
         Returns:
             Model: The current model instance with the SELECT clause applied.
         """
-        cls.__query['select'] = cls.__query.get('select', [])
+        self.__query['select'] = self.__query.get('select', [])
         len_fields = len(fields)
         if len_fields > 0:
             if len_fields == 1:
@@ -189,11 +189,10 @@ class Model:
                     fields = [field.strip() for field in fields[0].split(',')]
                 elif isinstance(fields[0], list):
                     fields = fields[0]
-            cls.__query['select'] += fields
-        return cls
+            self.__query['select'] += fields
+        return self
 
-    @classmethod
-    def join(cls, table, first, operator, second, join_type='INNER'):
+    def join(self, table, first, operator, second, join_type='INNER'):
         """
         Add a JOIN clause to the query.
 
@@ -210,13 +209,12 @@ class Model:
         Returns:
             Model: The current model instance with the JOIN clause applied.
         """
-        cls.__query['joins'] = cls.__query.get('joins', [])
-        cls.__query['joins'].append(
+        self.__query['joins'] = self.__query.get('joins', [])
+        self.__query['joins'].append(
             {'table': table, 'first': first, 'operator': operator, 'second': second, 'type': join_type})
-        return cls
+        return self
 
-    @classmethod
-    def left_join(cls, table, first, operator, second):
+    def left_join(self, table, first, operator, second):
         """
         Add a LEFT JOIN clause to the query.
 
@@ -232,10 +230,9 @@ class Model:
         Returns:
             Model: The current model instance with the LEFT JOIN clause applied.
         """
-        return cls.join(table, first, operator, second, 'LEFT')
+        return self.join(table, first, operator, second, 'LEFT')
 
-    @classmethod
-    def where(cls, field, operator=None, value=None):
+    def where(self, field, operator=None, value=None):
         """
         Add WHERE clause to query.
         If field is a dict, it will treat each key-value pair as a condition with the '=' operator.
@@ -250,21 +247,20 @@ class Model:
         Returns:
             Model: The current model instance with the WHERE clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
+        self.__query['where'] = self.__query.get('where', [])
         if isinstance(field, dict):
             for key, val in field.items():
-                cls.__query['where'].append({'field': key, 'operator': '=', 'value': val, 'chain': 'AND'})
+                self.__query['where'].append({'field': key, 'operator': '=', 'value': val, 'chain': 'AND'})
         elif isinstance(field, str):
             if not value:
                 if not operator:
                     raise Exception('Second argument must be operator or value')
                 value = operator
                 operator = '='
-            cls.__query['where'].append({'field': field, 'operator': operator, 'value': value, 'chain': 'AND'})
-        return cls
+            self.__query['where'].append({'field': field, 'operator': operator, 'value': value, 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def or_where(cls, field, operator=None, value=None):
+    def or_where(self, field, operator=None, value=None):
         """
         Add an OR WHERE clause to the query.
 
@@ -281,10 +277,10 @@ class Model:
         Returns:
             Model: The current model instance with the OR WHERE clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
+        self.__query['where'] = self.__query.get('where', [])
         if isinstance(field, dict):
             for key, val in field.items():
-                cls.__query['where'].append({
+                self.__query['where'].append({
                     'field': key,
                     'operator': '=',
                     'value': val,
@@ -296,11 +292,10 @@ class Model:
                     raise Exception('Second argument must be operator or value')
                 value = operator
                 operator = '='
-            cls.__query['where'].append({'field': field, 'operator': operator, 'value': value, 'chain': 'OR'})
-        return cls
+            self.__query['where'].append({'field': field, 'operator': operator, 'value': value, 'chain': 'OR'})
+        return self
 
-    @classmethod
-    def where_raw(cls, raw):
+    def where_raw(self, raw):
         """
         Add a raw WHERE clause to the query.
 
@@ -312,12 +307,11 @@ class Model:
         Returns:
             Model: The current model instance with the raw WHERE clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'raw': raw, 'chain': 'AND'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'raw': raw, 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def or_where_raw(cls, raw):
+    def or_where_raw(self, raw):
         """
         Add a raw OR WHERE clause to the query.
 
@@ -329,12 +323,11 @@ class Model:
         Returns:
             Model: The current model instance with the raw OR WHERE clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'raw': raw, 'chain': 'OR'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'raw': raw, 'chain': 'OR'})
+        return self
 
-    @classmethod
-    def where_in(cls, field, values):
+    def where_in(self, field, values):
         """
         Add a WHERE IN clause to the query.
 
@@ -347,12 +340,11 @@ class Model:
         Returns:
             Model: The current model instance with the WHERE IN clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'field': field, 'operator': 'IN', 'value': values, 'chain': 'AND'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'field': field, 'operator': 'IN', 'value': values, 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def where_not_in(cls, field, values):
+    def where_not_in(self, field, values):
         """
         Add a WHERE NOT IN clause to the query.
 
@@ -365,12 +357,11 @@ class Model:
         Returns:
             Model: The current model instance with the WHERE NOT IN clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'field': field, 'operator': 'NOT IN', 'value': values, 'chain': 'AND'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'field': field, 'operator': 'NOT IN', 'value': values, 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def where_null(cls, field):
+    def where_null(self, field):
         """
         Add a WHERE IS NULL clause to the query.
 
@@ -382,12 +373,11 @@ class Model:
         Returns:
             Model: The current model instance with the WHERE IS NULL clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'field': field, 'operator': 'IS', 'value': 'NULL', 'chain': 'AND'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'field': field, 'operator': 'IS', 'value': 'NULL', 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def where_not_null(cls, field):
+    def where_not_null(self, field):
         """
         Add a WHERE IS NOT NULL clause to the query.
 
@@ -399,12 +389,11 @@ class Model:
         Returns:
             Model: The current model instance with the WHERE IS NOT NULL clause applied.
         """
-        cls.__query['where'] = cls.__query.get('where', [])
-        cls.__query['where'].append({'field': field, 'operator': 'IS NOT', 'value': 'NULL', 'chain': 'AND'})
-        return cls
+        self.__query['where'] = self.__query.get('where', [])
+        self.__query['where'].append({'field': field, 'operator': 'IS NOT', 'value': 'NULL', 'chain': 'AND'})
+        return self
 
-    @classmethod
-    def with_trashed(cls):
+    def with_trashed(self):
         """
         Include soft deleted data in the query results.
 
@@ -413,11 +402,10 @@ class Model:
         Returns:
             Model: The current model instance with the soft deleted data included.
         """
-        cls.__query['with_trashed'] = True
-        return cls
+        self.__query['with_trashed'] = True
+        return self
 
-    @classmethod
-    def order_by(cls, field, direction='ASC'):
+    def order_by(self, field, direction='ASC'):
         """
         Add an ORDER BY clause to the query.
 
@@ -430,11 +418,10 @@ class Model:
         Returns:
             Model: The current model instance with the ORDER BY clause applied.
         """
-        cls.__query['order_by'] = {'field': field, 'direction': direction}
-        return cls
+        self.__query['order_by'] = {'field': field, 'direction': direction}
+        return self
 
-    @classmethod
-    def group_by(cls, *fields):
+    def group_by(self, *fields):
         """
         Add a GROUP BY clause to the query.
 
@@ -452,11 +439,10 @@ class Model:
                 fields = [field.strip() for field in fields[0].split(',')]
             elif isinstance(fields[0], list):
                 fields = fields[0]
-        cls.__query['group_by'] = fields
-        return cls
+        self.__query['group_by'] = fields
+        return self
 
-    @classmethod
-    def limit(cls, limit, offset=0):
+    def limit(self, limit, offset=0):
         """
         Set the LIMIT and OFFSET for the query.
 
@@ -469,12 +455,11 @@ class Model:
         Returns:
             Model: The current model instance with the limit and offset applied.
         """
-        cls.__query['limit'] = limit
-        cls.__query['offset'] = offset
-        return cls
+        self.__query['limit'] = limit
+        self.__query['offset'] = offset
+        return self
 
-    @classmethod
-    def has_many(cls, model, foreign_key, local_key, name='', callback=None):
+    def has_many(self, model, foreign_key, local_key, name='', callback=None):
         """
         Add a hasMany relationship to the result.
 
@@ -494,8 +479,8 @@ class Model:
             model = model()
         if not name:
             name = model.table
-        cls.__query['relations'] = cls.__query.get('relations', [])
-        cls.__query['relations'].append({
+        self.__query['relations'] = self.__query.get('relations', [])
+        self.__query['relations'].append({
             'model': model,
             'foreignKey': foreign_key,
             'localKey': local_key,
@@ -503,10 +488,9 @@ class Model:
             'type': 'hasMany',
             'callback': callback
         })
-        return cls
+        return self
 
-    @classmethod
-    def has_one(cls, model, foreign_key, local_key, name='', callback=None):
+    def has_one(self, model, foreign_key, local_key, name='', callback=None):
         """
         Add a hasOne relationship to the result.
 
@@ -526,8 +510,8 @@ class Model:
             model = model()
         if not name:
             name = model.table
-        cls.__query['relations'] = cls.__query.get('relations', [])
-        cls.__query['relations'].append({
+        self.__query['relations'] = self.__query.get('relations', [])
+        self.__query['relations'].append({
             'model': model,
             'foreignKey': foreign_key,
             'localKey': local_key,
@@ -535,10 +519,9 @@ class Model:
             'type': 'hasOne',
             'callback': callback
         })
-        return cls
+        return self
 
-    @classmethod
-    def belongs_to(cls, model, foreign_key, local_key, name='', callback=None):
+    def belongs_to(self, model, foreign_key, local_key, name='', callback=None):
         """
         Add a belongsTo relationship to the result.
 
@@ -558,8 +541,8 @@ class Model:
             model = model()
         if not name:
             name = model.table
-        cls.__query['relations'] = cls.__query.get('relations', [])
-        cls.__query['relations'].append({
+        self.__query['relations'] = self.__query.get('relations', [])
+        self.__query['relations'].append({
             'model': model,
             'foreignKey': foreign_key,
             'localKey': local_key,
@@ -567,10 +550,9 @@ class Model:
             'type': 'belongsTo',
             'callback': callback
         })
-        return cls
+        return self
 
-    @classmethod
-    def with_relation(cls, *relations):
+    def with_relation(self, *relations):
         """
         Add a with clause to the query.
 
@@ -588,13 +570,12 @@ class Model:
             elif isinstance(relations[0], list):
                 relations = relations[0]
         for relation in relations:
-            if not hasattr(cls, relation):
+            if not hasattr(self, relation):
                 raise Exception(f'Relation `{relation}` doesn\'t exist!')
-            getattr(cls, relation)()
-        return cls
+            getattr(self, relation)()
+        return self
 
-    @classmethod
-    def raw_query(cls, query):
+    def raw_query(self, query):
         """
         Execute a raw query.
 
@@ -606,11 +587,10 @@ class Model:
         Returns:
             Any: The result of the raw query execution.
         """
-        cls.__query['action'] = 'raw'
-        return cls._execute('raw', query)
+        self.__query['action'] = 'raw'
+        return self._execute('raw', query)
 
-    @classmethod
-    def get(cls):
+    def get(self):
         """
         Retrieve all data from the table.
 
@@ -619,13 +599,12 @@ class Model:
         Returns:
             list: A list of records from the table.
         """
-        if cls.soft_delete and not cls.__query.get('with_trashed'):
-            cls.where_null('deleted_at')
-        cls.__query['action'] = 'select'
-        return cls._process()
+        if self.soft_delete and not self.__query.get('with_trashed'):
+            self.where_null('deleted_at')
+        self.__query['action'] = 'select'
+        return self._process()
 
-    @classmethod
-    def first(cls):
+    def first(self):
         """
         Retrieve the first record from the table.
 
@@ -634,12 +613,11 @@ class Model:
         Returns:
             dict: The first record from the table, or None if no record is found.
         """
-        cls.__query['limit'] = 1
-        result = cls.get()
+        self.__query['limit'] = 1
+        result = self.get()
         return result[0] if result else None
 
-    @classmethod
-    def find(cls, primary_key):
+    def find(self, primary_key):
         """
         Find data by primary key.
 
@@ -651,11 +629,10 @@ class Model:
         Returns:
             The first record that matches the primary key, or None if no record is found.
         """
-        cls.__query['where'] = []
-        return cls.where(cls.primary_key, primary_key).first()
+        self.__query['where'] = []
+        return self.where(self.primary_key, primary_key).first()
 
-    @classmethod
-    def count(cls):
+    def count(self):
         """
         Get the total number of records in the table.
 
@@ -664,12 +641,11 @@ class Model:
         Returns:
             int: The total number of records in the table.
         """
-        cls.__query['select'] = ['COUNT(*) AS total']
-        result = cls.get()
+        self.__query['select'] = ['COUNT(*) AS total']
+        result = self.get()
         return result[0].get('total', 0) if result else 0
 
-    @classmethod
-    def insert(cls, *args, **kwargs):
+    def insert(self, *args, **kwargs):
         """
         Insert data into the database.
 
@@ -685,21 +661,20 @@ class Model:
             The result of the insert operation, or None if no data is provided.
         """
         data = args[0] if args and isinstance(args[0], dict) else kwargs
-        cls.__query['data'] = columns(data, cls.fillable, cls.guarded)
-        if not cls.__query['data']:
+        self.__query['data'] = columns(data, self.fillable, self.guarded)
+        if not self.__query['data']:
             return None
 
         # cast data type if exist
-        cls.__query['data'] = casts(cls.__query['data'], cls.casts, True)
+        self.__query['data'] = casts(self.__query['data'], self.casts, True)
 
-        if cls.timestamp:
-            cls.__query['data']['created_at'] = datetime.datetime.now()
+        if self.timestamp:
+            self.__query['data']['created_at'] = datetime.datetime.now()
 
-        cls.__query['action'] = 'insert'
-        return cls._process()
+        self.__query['action'] = 'insert'
+        return self._process()
 
-    @classmethod
-    def update(cls, *args, **kwargs):
+    def update(self, *args, **kwargs):
         """
         Update data in the database.
 
@@ -716,29 +691,28 @@ class Model:
             The result of the update operation, or None if no data is provided.
         """
         data = args[0] if args and isinstance(args[0], dict) else kwargs
-        cls.__query['data'] = columns(data, cls.fillable, cls.guarded)
-        if not cls.__query['data']:
+        self.__query['data'] = columns(data, self.fillable, self.guarded)
+        if not self.__query['data']:
             return None
 
         # cast data type if exist
-        cls.__query['data'] = casts(cls.__query['data'], cls.casts, True)
+        self.__query['data'] = casts(self.__query['data'], self.casts, True)
 
         # for safety, update query must have where clause
-        if cls.__query.get('where') is None:
+        if self.__query.get('where') is None:
             raise Exception('Update query must have where clause!')
 
         # check if soft delete is enabled
-        if cls.soft_delete and not cls.__query.get('with_trashed'):
-            cls.where_null('deleted_at')
+        if self.soft_delete and not self.__query.get('with_trashed'):
+            self.where_null('deleted_at')
 
-        if cls.timestamp:
-            cls.__query['data']['updated_at'] = datetime.datetime.now()
+        if self.timestamp:
+            self.__query['data']['updated_at'] = datetime.datetime.now()
 
-        cls.__query['action'] = 'update'
-        return cls._process()
+        self.__query['action'] = 'update'
+        return self._process()
 
-    @classmethod
-    def delete(cls):
+    def delete(self):
         """
         Delete data. If soft delete is enabled, it will set `deleted_at` column to current datetime.
 
@@ -748,16 +722,15 @@ class Model:
         Returns:
             Model: The current model instance with the delete operation applied.
         """
-        if cls.soft_delete:
-            cls.where_null('deleted_at')
-            cls.__query['data'] = {'deleted_at': datetime.datetime.now()}
-            cls.__query['action'] = 'update'
+        if self.soft_delete:
+            self.where_null('deleted_at')
+            self.__query['data'] = {'deleted_at': datetime.datetime.now()}
+            self.__query['action'] = 'update'
         else:
-            cls.__query['action'] = 'delete'
-        return cls._process()
+            self.__query['action'] = 'delete'
+        return self._process()
 
-    @classmethod
-    def restore(cls):
+    def restore(self):
         """
         Restore soft deleted data.
 
@@ -766,14 +739,13 @@ class Model:
         Returns:
             The result of the update operation if soft delete is enabled, otherwise None.
         """
-        if cls.soft_delete:
-            cls.__query['data'] = {'deleted_at': None}
-            cls.__query['action'] = 'update'
-            return cls._process()
+        if self.soft_delete:
+            self.__query['data'] = {'deleted_at': None}
+            self.__query['action'] = 'update'
+            return self._process()
         return None
 
-    @classmethod
-    def force_delete(cls):
+    def force_delete(self):
         """
         Force delete data.
 
@@ -782,11 +754,10 @@ class Model:
         Returns:
             The result of the delete operation.
         """
-        cls.__query['action'] = 'delete'
-        return cls._process()
+        self.__query['action'] = 'delete'
+        return self._process()
 
-    @classmethod
-    def paginate(cls, page=0, per_page=0):
+    def paginate(self, page=0, per_page=0):
         """
         Get data with pagination.
 
@@ -807,24 +778,24 @@ class Model:
         if not isinstance(per_page, int):
             per_page = int(per_page)
         if page < 1:
-            page = int((cls.__query.get('offset', 0) / cls.__query.get('limit', cls.per_page)) + 1)
+            page = int((self.__query.get('offset', 0) / self.__query.get('limit', self.per_page)) + 1)
         if per_page < 1:
-            per_page = cls.__query.get('limit', cls.per_page)
-        cls.__query['limit'] = per_page
-        cls.__query['offset'] = (page - 1) * per_page
+            per_page = self.__query.get('limit', self.per_page)
+        self.__query['limit'] = per_page
+        self.__query['offset'] = (page - 1) * per_page
 
-        if cls.soft_delete and not cls.__query.get('with_trashed'):
-            cls.where_null('deleted_at')
+        if self.soft_delete and not self.__query.get('with_trashed'):
+            self.where_null('deleted_at')
 
-        cls.__query['action'] = 'select'
-        data = cls._process(reset=False)
+        self.__query['action'] = 'select'
+        data = self._process(reset=False)
 
-        if cls.soft_delete and not cls.__query.get('with_trashed'):
-            cls.__query['where'].pop()
+        if self.soft_delete and not self.__query.get('with_trashed'):
+            self.__query['where'].pop()
 
-        cls.__query['limit'] = None
-        cls.__query['offset'] = None
-        total = cls.count()
+        self.__query['limit'] = None
+        self.__query['offset'] = None
+        total = self.count()
         pages = int(total / per_page)
         return {
             'data': data,
