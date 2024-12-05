@@ -63,12 +63,13 @@ class User(Model):
 
 ```python
 from users import User
-user = User.find(1)
+user = User().find(1)
 ```
 
 ### Retrieving Records
 
 ```python
+User = User()
 users = User.where('is_active', True).get()
 print(users)
 ```
@@ -581,9 +582,8 @@ class User(Model):
     table = 'users'
     ...
 
-    @classmethod
-    def profile(cls):
-        return cls.has_one(Profile, 'user_id', 'id', 'profile', lambda q: q.select('bio', 'user_id'))
+    def profile(self):
+        return self.has_one(Profile(), 'user_id', 'id', 'profile', lambda q: q.select('bio', 'user_id'))
 
 ```
 
@@ -608,9 +608,8 @@ class User(Model):
     table = 'users'
     ...
 
-    @classmethod
-    def posts(cls):
-        return cls.has_many(Post, 'user_id', 'id', 'posts', lambda q: q.select('title', 'user_id'))
+    def posts(self):
+        return self.has_many(Post(), 'user_id', 'id', 'posts', lambda q: q.select('title', 'user_id'))
 
 ```
 
@@ -635,9 +634,8 @@ class Profile(Model):
     table = 'profiles'
     ...
 
-    @classmethod
-    def user(cls):
-        return cls.belongs_to(User, 'user_id', 'id', 'user', lambda q: q.select('id', 'name', 'username'))
+    def user(self):
+        return self.belongs_to(User(), 'user_id', 'id', 'user', lambda q: q.select('id', 'name', 'username'))
 
 ```
 
