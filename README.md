@@ -39,6 +39,80 @@ DatabaseConnection.initialize(
 )
 ```
 
+### Multiple Connections (One Process)
+
+SQLython supports multiple named connection pools in a single process. You have two approaches:
+
+#### Approach 1: Dynamic Selection with `.on(connection_name)` (Recommended for mixed queries)
+
+Initialize each database with a unique `name`, then use `.on(name)` to select the target connection:
+
+```python
+from sqlython.connection import DatabaseConnection
+
+DatabaseConnection.initialize(
+    name='apollo',
+    host='localhost',
+    port=3306,
+    user='root',
+    password='',
+    database='db_apollo',
+)
+
+DatabaseConnection.initialize(
+    name='olympus',
+    host='localhost',
+    port=3306,
+    user='root',
+    password='',
+    database='db_olympus',
+)
+```
+
+```python
+from users import User
+
+apollo_users = User().on('apollo').where('is_active', 1).get()
+olympus_users = User().on('olympus').where('is_active', 1).get()
+```
+
+#### Approach 2: Class-Level Default Connection (Recommended for dedicated models)
+
+Set a default `connection` at the class level. Useful when a model is always tied to a specific database:
+
+```python
+from sqlython.model import Model
+
+class ApolloUser(Model):
+    table = 'users'
+    connection = 'apollo'  # Always use 'apollo' database
+
+class OlympusOrder(Model):
+    table = 'orders'
+    connection = 'olympus'  # Always use 'olympus' database
+```
+
+```python
+apollo_users = ApolloUser().get()  # Automatically queries db_apollo
+olympus_orders = OlympusOrder().get()  # Automatically queries db_olympus
+
+# Override if needed
+apollo_users_via_olympus = ApolloUser().on('olympus').get()
+```
+
+#### Default Behavior
+
+- **Without `.on()`** and **without class-level `connection`**: Uses the `'default'` connection.
+- If the connection hasn't been initialized, it auto-initializes using environment variables (backward compatible).
+
+```python
+# Queries the 'default' database
+users = User().get()
+
+# After this, it's been explicitly set to 'apollo'
+users = User().on('apollo').get()
+```
+
 ## Usage
 
 ### Extending the Model
@@ -110,6 +184,16 @@ The default number of records to return per page when using the `paginate()` met
 
 The columns that should be cast to a specific data type. Available data types are: `string`, `number`, `float`,
 `boolean`, `date`, `json`.
+
+#### connection (str|default='default')
+
+Default named connection for a model class.
+
+```python
+class User(Model):
+    table = 'users'
+    connection = 'apollo'
+```
 
 ## Methods
 
@@ -674,3 +758,17 @@ users = User.raw_query('SELECT * FROM users WHERE is_active = 1').get()
 #     ...
 # ]
 ```
+
+### on(connection_name)
+
+#### Parameters
+
+- connection_name (string|required) - The name passed to `DatabaseConnection.initialize(name='...')`.
+
+Run a query using a specific connection instance.
+
+```python
+users_apollo = User().on('apollo').get()
+users_olympus = User().on('olympus').get()
+```
+
