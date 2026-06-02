@@ -30,12 +30,13 @@ class Model:
     soft_delete = False
     per_page = 10
     casts = {}
+    connection = DatabaseConnection.DEFAULT_CONNECTION_NAME
 
     def __init__(self):
         self.__query = {}
+        self._connection_name = self.connection
 
-    @staticmethod
-    def _execute(action, query, bindings=None):
+    def _execute(self, action, query, bindings=None):
         """
         Execute a database query.
 
@@ -52,16 +53,16 @@ class Model:
                           For 'update' and 'delete', it returns a dictionary with the number of affected rows.
                           For other actions, it returns a list of fetched records.
         """
-        connection = DatabaseConnection.get_connection()
-        cursor = connection.cursor(dictionary=True)
+        db_connection = DatabaseConnection.get_connection(self._connection_name)
+        cursor = db_connection.cursor(dictionary=True)
         try:
             if action == 'insert':
                 cursor.execute(query, bindings)
-                connection.commit()
+                db_connection.commit()
                 result = {'insert_id': cursor.lastrowid}
             elif action == 'update' or action == 'delete':
                 cursor.execute(query, bindings)
-                connection.commit()
+                db_connection.commit()
                 result = {'affected_rows': cursor.rowcount}
             else:
                 cursor.execute(query, bindings)
@@ -69,7 +70,20 @@ class Model:
             return result
         finally:
             cursor.close()
-            connection.close()
+            db_connection.close()
+
+    def on(self, connection_name):
+        """
+        Set the active named connection for this model instance.
+
+        Args:
+            connection_name (str): Connection name initialized in DatabaseConnection.
+
+        Returns:
+            Model: The current model instance with the selected connection.
+        """
+        self._connection_name = connection_name
+        return self
 
     def _process(self, reset=True):
         """
@@ -477,6 +491,7 @@ class Model:
         """
         if isinstance(model, type):
             model = model()
+        model.on(self._connection_name)
         if not name:
             name = model.table
         self.__query['relations'] = self.__query.get('relations', [])
@@ -508,6 +523,7 @@ class Model:
         """
         if isinstance(model, type):
             model = model()
+        model.on(self._connection_name)
         if not name:
             name = model.table
         self.__query['relations'] = self.__query.get('relations', [])
@@ -539,6 +555,7 @@ class Model:
         """
         if isinstance(model, type):
             model = model()
+        model.on(self._connection_name)
         if not name:
             name = model.table
         self.__query['relations'] = self.__query.get('relations', [])
